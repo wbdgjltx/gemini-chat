@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>错别字修正工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 300;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .main-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-area {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .text-section {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 500;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .text-input, .text-output {
+            width: 100%;
+            min-height: 400px;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .text-output {
+            background: #f8f9fa;
+        }
+
+        .button-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .correct-button {
+            padding: 12px 40px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .correct-button:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        .correct-button:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .char-count {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        .copy-button {
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .copy-button:hover {
+            background: #229954;
+        }
+
+        .copy-button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .tips {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tips h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .tips ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .tips li {
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .tips li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #27ae60;
+        }
+
+        .error-message {
+            background: #e74c3c;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .success-message {
+            background: #27ae60;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>智能错别字修正工具</h1>
+            <p>基于 Gemini 2.5 Pro 的高精度文本纠错服务</p>
+        </div>
+
+        <div class="tips">
+            <h3>💡 使用提示</h3>
+            <ul>
+                <li>支持中文、英文及混合文本的错别字检测与修正</li>
+                <li>可处理长文本，包括文章、报告等（建议不超过 3 万字）</li>
+                <li>自动保留原文格式，包括段落、标点等</li>
+                <li>处理时间视文本长度而定，请耐心等待</li>
+            </ul>
+        </div>
+
+        <div class="main-area">
+            <div class="text-section">
+                <div class="section-title">
+                    <span>原始文本</span>
+                    <span class="char-count" id="inputCharCount">0 字</span>
+                </div>
+                <textarea 
+                    id="inputText" 
+                    class="text-input" 
+                    placeholder="请在此处粘贴或输入需要修正的文本..."
+                ></textarea>
+            </div>
+
+            <div class="text-section">
+                <div class="section-title">
+                    <span>修正后文本</span>
+                    <button id="copyButton" class="copy-button" disabled>复制结果</button>
+                </div>
+                <textarea 
+                    id="outputText" 
+                    class="text-output" 
+                    placeholder="修正后的文本将显示在这里..." 
+                    readonly
+                ></textarea>
+            </div>
+        </div>
+
+        <div class="button-area">
+            <button id="correctButton" class="correct-button">
+                <span id="buttonText">开始修正</span>
+            </button>
+            <div class="error-message" id="errorMessage"></div>
+            <div class="success-message" id="successMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        // API 地址 - 使用 Cloudflare Pages Functions
+        const API_URL = '/api/v1beta/models/gemini-2.5-pro:generateContent';
+        
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const correctButton = document.getElementById('correctButton');
+        const copyButton = document.getElementById('copyButton');
+        const buttonText = document.getElementById('buttonText');
+        const inputCharCount = document.getElementById('inputCharCount');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        // 更新字数统计
+        inputText.addEventListener('input', () => {
+            const charCount = inputText.value.length;
+            inputCharCount.textContent = `${charCount} 字`;
+        });
+
+        // 显示错误信息
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        // 显示成功信息
+        function showSuccess(message) {
+            successMessage.textContent = message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
+
+        // 修正文本
+        async function correctText() {
+            const text = inputText.value.trim();
+            
+            if (!text) {
+                showError('请输入需要修正的文本');
+                return;
+            }
+
+            if (text.length > 30000) {
+                showError('文本长度超过限制（最多 30000 字）');
+                return;
+            }
+
+            // 显示加载状态
+            correctButton.disabled = true;
+            buttonText.innerHTML = '<div class="loading"></div> 正在修正...';
+            outputText.value = '';
+            copyButton.disabled = true;
+
+            try {
+                const prompt = `请仔细检查并修正以下文本中的所有错别字、语法错误和不通顺的地方。
+要求：
+1. 只修正明显的错误，保持原文的语言风格和表达习惯
+2. 保留原文的格式，包括段落、空格、标点符号等
+3. 不要改变原文的意思
+4. 不要添加任何解释或说明，直接返回修正后的文本
+5. 如果原文没有错误，原样返回
+
+原文：
+${text}`;
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [
+                            {
+                                parts: [
+                                    {
+                                        text: prompt
+                                    }
+                                ]
+                            }
+                        ],
+                        generationConfig: {
+                            temperature: 0.1,
+                            topK: 1,
+                            topP: 0.1,
+                            maxOutputTokens: 8192
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                    const correctedText = data.candidates[0].content.parts[0].text;
+                    outputText.value = correctedText;
+                    copyButton.disabled = false;
+                    showSuccess('修正完成！');
+                } else {
+                    throw new Error('无法获取修正结果');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('修正失败，请稍后重试');
+            } finally {
+                correctButton.disabled = false;
+                buttonText.textContent = '开始修正';
+            }
+        }
+
+        // 复制结果
+        async function copyResult() {
+            try {
+                await navigator.clipboard.writeText(outputText.value);
+                showSuccess('已复制到剪贴板！');
+            } catch (error) {
+                // 降级方案
+                outputText.select();
+                document.execCommand('copy');
+                showSuccess('已复制到剪贴板！');
+            }
+        }
+
+        // 绑定事件
+        correctButton.addEventListener('click', correctText);
+        copyButton.addEventListener('click', copyResult);
+
+        // 支持 Ctrl/Cmd + Enter 快捷键
+        inputText.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                correctText();
+            }
+        });
+    </script>
+</body>
+</html>
